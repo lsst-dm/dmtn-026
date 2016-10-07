@@ -136,9 +136,16 @@ Before we make any changes it's a good idea to compile the cloned repository to 
 
 .. code-block:: shell
 
+    scons
+
+to build afw.
+Since this is your first build of afw it will take a while but as you make changes, using
+
+.. code-block:: shell
+
     scons python lib
 
-to build afw. Since this is your first build of afw it will take a while (but as you make changes, only the newly wrapped headers will need to be built, so development is much faster than with SWIG).
+only builds the newly wrapped headers, so development is much faster than with SWIG).
 
 Locking Files
 -------------
