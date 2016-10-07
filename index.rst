@@ -9,7 +9,7 @@
 Scope of the document
 =====================
 
-This document is designed to assist developers involved in porting LSST Science Pipelines 
+This document is designed to assist developers involved in porting LSST Science Pipelines
 from swig to pybind11. For more details on the styling conventions see ??.
 
 .. _intro:
@@ -19,16 +19,16 @@ from swig to pybind11. For more details on the styling conventions see ??.
 Installation
 ============
 
-To install all of the currently wrapped code install with
+To install all of the currently wrapped code with lsstsw, use
 
 .. code-block:: bash
 
     rebuild -r tickets/DM-6168 {{package name}}
 
-where {{package name}} is the name of the package that is currently being wrapped (for instance afw). 
+where {{package name}} is the name of the package that is currently being wrapped (for instance afw).
 This will build the most up to date version of the stack that has been ported to pybind11, as the tests that have not been wrapped are all commented out (see section :ref:`activate_test`).
 
-Don't forget to setup the new build as current with EUPS:
+Don't forget to tag the new build as current with EUPS:
 
 .. code-block:: bash
 
@@ -36,7 +36,7 @@ Don't forget to setup the new build as current with EUPS:
 
 where bNNN is the current build number.
 
-You will also need to install `gitlock`_ to allow you to get a soft lock on files that you are working on. 
+You will also need to install `gitlock`_ to allow you to get a soft lock on files that you are working on.
 Follow the instructions on the `gitlock`_ page for details.
 
 .. _new_package:
@@ -44,9 +44,9 @@ Follow the instructions on the `gitlock`_ page for details.
 Wrapping a new package
 ======================
 
-Since many packages have C++ classes and functions that are not exposed to python, there are large chunks of code that are not currently tested explicitely. 
-Without tests there is no way to know whether these methods have been properly wrapped so for now we only wrap methods that are called from python tests.
-A single test might import from multiple submodules of the current package, so we found that it is more efficient to wrap by test as opposed to wrapping by module. 
+Since many packages have C++ classes and functions that are not exposed to Python, there are large chunks of code that are not currently tested explicitely.
+Without tests there is no way to know whether these methods have been properly wrapped, so for now we only wrap methods that are called from Python tests.
+A single test might import from multiple submodules of the current package, so we found that it is more efficient to wrap by test as opposed to wrapping by module.
 The following section outlines the procedure to begin wrapping a new package.
 
 Preparing Package
@@ -58,9 +58,9 @@ Before you can begin wrapping a package it is useful to make templates of all of
 
     python build_templates <python path> <header path>
 
-where ``python path`` is the full path to the main location of the python packages 
-(for example afw/python/lsst/afw) and ``header path`` is the location of the include files 
-(for example afw/include/lsst/afw). 
+where ``python path`` is the full path to the main location of the Python packages
+(for example ``afw/python/lsst/afw``) and ``header path`` is the location of the include files
+(for example ``afw/include/lsst/afw``).
 
 This is step is only necessary if you are the first developer wrapping a new package, otherwise the template files have already been created.
 Don't forget to commit these changes and push to the github remote since others will likely need to work on the same package.
@@ -77,14 +77,8 @@ Since the stack has been built using lsstsw, you can simply use
 
 .. code-block:: bash
 
-    setup {{package name}}
-
-where {{package name}} is the name of the package that is currently being wrapped (for instance afw), and
-
-.. code-block:: bash
-
     cd <repository directory>
-    setup -j -r .
+    setup -r .
 
 to setup the package currently being wrapped.
 
@@ -93,9 +87,11 @@ to setup the package currently being wrapped.
 Rebasing and Locking Files
 --------------------------
 
-Because the pybind11 stack is a fork of the master lsst packages, frequent rebasing will occur throughout the pybind11 port. 
-With multiple developers working on the same package and set of library files in the same ticket branch, frequent pushing and rebasing is necessary to keep everyones stack up to date. 
-To prevent unnecessary merge conflicts it is best to lock files that you are currently working on. 
+Because the pybind11 stack is a fork of the master lsst packages, frequent rebasing will occur throughout the pybind11 port.
+Additionally, the while we strive to have different developers work as much as possible on independent packages, the numerous
+interdependencies will sometimes require working on the same package and even in the same ticket branch.
+Thus frequent pushing and rebasing is necessary to keep everyones stack up to date.
+To prevent unnecessary merge conflicts it is best to lock files that you are currently working on.
 Git does not have a true lock, in that locking a file does not prevent others from working on it and pushing their commits.
 Instead the `gitlock`_ package can be used to lock a particular file and notify the group that a file is being worked on. Once gitlock is setup you can lock a file by using
 
@@ -127,7 +123,7 @@ Alternatively, if you are wrapping a file with a large number of tests in it you
 Tutorial
 ========
 
-To illustrate how to wrap a test we will use afw/tests/testMinimize.py as an example. You will need to clone https://github.com/lsst/afw to your local machine and checkout the correct ticket branch for the current test. In this case ``testMinimize.py`` is in ``tickets/DM-6298``, so we checkout that branch and set it up with ``setup -j -r .`` from the main ``afw`` repository directory.
+To illustrate how to wrap a test we will use ``afw/tests/testMinimize.py`` as an example. We start by cloning https://github.com/lsst/afw to our local machine and checkout the correct ticket branch for the current test. In this case ``testMinimize.py`` is in ``tickets/DM-6298``, so we checkout that branch and set it up with ``setup -r .`` from the main ``afw`` repository directory.
 
 Compiling the Code
 ------------------
@@ -150,7 +146,7 @@ only builds the newly wrapped headers, so development is much faster than with S
 Locking Files
 -------------
 
-Before we start working we want to lock the current test using 
+Before we start working we want to lock the current test using
 
 .. code-block:: bash
 
@@ -221,30 +217,32 @@ In this case the only test class, ``MinimizeTestCase``, imports two functions fr
             self.assertTrue(fitResults.isValid, "fit failed")
             self.assertFloatsAlmostEqual(np.array(modelParams), np.array(fitResults.parameterList), 1e-11)
 
-We'll start with by wrapping the ``minimize`` function in minimize.h.
+We'll start with by wrapping the ``minimize`` function in ``minimize.h``.
 
 .. _new_cpp:
 
 Including a new C++ Header
 --------------------------
 
-We first have to tell scons about the new header we want to wrap, so we modify ``python/lsst/afw/math/SConscript`` by uncommenting line 2 ``from lsst.sconsUtils import scripts``, and change line 3 to
+We first have to tell scons about the new header we want to wrap, so we modify ``python/lsst/afw/math/SConscript`` to read.
 
 .. code-block:: python
 
+    from lsst.sconsUtils import scripts
     scripts.BasicSConscript.pybind11(['minimize'])
 
 .. note::
 
     It is important to change ``scripts.BasicSConscript.python`` (which uses swig) to ``scripts.BasicSConscript.pybind11`` (which uses pybind11).
 
-We also need to tell python to import the new modules in ``python/lsst/afw/math/mathLib.py``, where we add the line
+We also need to tell Python to import the new modules in ``python/lsst/afw/math/mathLib.py``, where we add the line
 
 .. code-block:: python
 
+    from __future__ import absolute_import
     from ._minimize import *
 
-Since we are wrapping the header file ``minimize.h`` we must make sure to include it in ``minimize.cc``:
+Since we are wrapping the header file ``minimize.h`` we must make sure to include it in ``minimize.cc`` (which is the previously created pybind11 template):
 
 .. code-block:: c++
 
@@ -306,14 +304,14 @@ The header file ``minimize.h`` contains the following code:
 
 
 We notice that ``minimize`` is a function that returns type ``FitResults``, and since ``FitResults`` is an ordinary structure we will wrap it first.
-In ``minimize.cc``, ``PYBIND11_PLUGIN`` contains the code to initialize the python module ``minimize``, and all of the methods will be placed in this structure.
+In ``minimize.cc``, ``PYBIND11_PLUGIN`` contains the code to initialize the Python module ``minimize``, and all of the methods will be placed in this structure.
 So inside the ``PYBIND11_PLUGIN`` structure, and after the module declaration ``py::module mod("_minimize", "Python wrapper for afw _minimize library");`` we add
 
 .. code-block:: c++
 
     py::class_<FitResults> clsFitResults(mod, "FitResults");
 
-which creates the class clsFitResults in the current module, linked to ``FitResults`` in the header file. 
+which creates the class clsFitResults in the current module, linked to ``FitResults`` in the header file.
 Next we add the attributes from ``FitResults`` in ``minimize.h`` beneath the new class we just declared:
 
 .. code-block:: c++
@@ -323,7 +321,7 @@ Next we add the attributes from ``FitResults`` in ``minimize.h`` beneath the new
     clsFitResults.def_readwrite("parameterList", &FitResults::parameterList);
     clsFitResults.def_readwrite("parameterErrorList", &FitResults::parameterErrorList);
 
-This is sufficient to bind the structure to our python code.
+This is sufficient to bind the structure to our Python code.
 
 At this time ``minimize.cc`` should look like
 
@@ -342,16 +340,8 @@ At this time ``minimize.cc`` should look like
     PYBIND11_PLUGIN(_minimize) {
         py::module mod("_minimize", "Python wrapper for afw _minimize library");
 
-        /* Module level */
-
-        /* Member types and enums */
-
-        /* Constructors */
-
-        /* Operators */
-
-        /* Members */
         py::class_<FitResults> clsFitResults(mod, "FitResults");
+
         clsFitResults.def_readwrite("isValid", &FitResults::isValid);
         clsFitResults.def_readwrite("chiSq", &FitResults::chiSq);
         clsFitResults.def_readwrite("parameterList", &FitResults::parameterList);
@@ -363,7 +353,7 @@ At this time ``minimize.cc`` should look like
 This is a good time to build our changes (at times the error messages generated by pybind11 can be obscure so it is useful to recompile after each wrapped class).
 From the shell prompt run
 
-.. code-block:: shell
+.. code-block:: bash
 
     scons python lib
 
@@ -410,16 +400,11 @@ Similarly, beneath this code we add the second set of parameters for the overloa
 
 We could copy these lines and change the templates to use type ``float`` if we wanted to, or instead we can write a function that allow us to template an arbitrarily large number of different types. This is not necessary with only two function types but it is useful to wrap them this way anyway for clarity, and as an exercise to illustrate how this is done in pybind11.
 
-Between the namespace declaration (``using namespace lsst::afw::math;``) and start of the plugin (``PYBIND11_PLUGIN(``) lines we can define a template using
+Between the namespace declaration (``using namespace lsst::afw::math;``) and start of the plugin (``PYBIND11_PLUGIN(``) lines we can define a template function to declare the minimize function.
 
 .. code-block:: c++
 
     template <typename ReturnT>
-
-and a function to declare the minimize function using the template
-
-.. code-block:: c++
-
     void declareMinimize(py::module & mod) {
         mod.def("minimize", (FitResults (*) (lsst::afw::math::Function1<ReturnT> const &,
                                              std::vector<double> const &,
@@ -482,16 +467,8 @@ Putting it all together, the file ``minimize.cc`` should look like
     PYBIND11_PLUGIN(_minimize) {
         py::module mod("_minimize", "Python wrapper for afw _minimize library");
 
-        /* Module level */
-
-        /* Member types and enums */
-
-        /* Constructors */
-
-        /* Operators */
-
-        /* Members */
         py::class_<FitResults> clsFitResults(mod, "FitResults");
+
         clsFitResults.def_readwrite("isValid", &FitResults::isValid);
         clsFitResults.def_readwrite("chiSq", &FitResults::chiSq);
         clsFitResults.def_readwrite("parameterList", &FitResults::parameterList);
@@ -544,7 +521,7 @@ The relevant code from ``functionLibrary.h`` is shown here:
         virtual ReturnT operator() (double x, double y) const {
             /* Operator code here */
         }
-        
+
         /* Code not needed for wrapping the current function here */
     };
 
@@ -563,7 +540,7 @@ Inside the function we declare our class
 
 .. code-block:: c++
 
-        py::class_<PolynomialFunction2<ReturnT>, BasePolynomialFunction2<ReturnT>> 
+        py::class_<PolynomialFunction2<ReturnT>, BasePolynomialFunction2<ReturnT>>
             clsPolynomialFunction2(mod, ("PolynomialFunction2" + suffix).c_str());
 
 This is slightly different than our class declaration in :ref:`wrap_struct` because ``PolynomialFunction2`` inherits from ``BasePolynomialFunction2``, which can be seen in the above declaration.
@@ -587,21 +564,21 @@ We must also declare the classes in the module, so inside ``PYBIND11_PLUGIN`` an
 
 where we use the ``double`` type since ``PolynomialFunction2D`` is the method called from ``testMinimize.py`` and specify ``suffix`` as ``"D"``.
 
-The last piece to wrap in ``functionLibrary.cc`` is the ``__call__`` method, since ``testMinimize.py`` makes use of it. In certain circumstances call can simply be wrapped with
+The last piece to wrap in ``functionLibrary.cc`` is the ``__call__`` method, since ``testMinimize.py`` makes use of it.
+Most operators can be wrapped with the helpers in ``pybind11/operators.h``, but for function call we need to specify the operator
+ourselves by binding a lambda.
 
 .. code-block:: c++
 
-    clsPolynomialFunction2.def("__call__", &PolynomialFunction2<ReturnT>::operator);
-
-but in this case it doesn't work because of (Pim please explain the problem here!).
-Instead we can use a lambda
-
-.. code-block:: c++
-
-    clsPolynomialFunction2.def("__call__", [](PolynomialFunction2<ReturnT> &t, double &x, double &y) 
+    clsPolynomialFunction2.def("__call__", [](PolynomialFunction2<ReturnT> &t, double &x, double &y)
         -> ReturnT {
             return t(x,y);
-    });
+    }, py::is_operator());
+
+.. note
+
+    The ``py::is_operator()`` informs pybind11 that the wrapped function is an operator which should trigger a ``NotImplementedError``
+    instead of a ``TypeError`` when called with the wrong type.
 
 where we call the C++ ``operator()`` function from the lambda.
 At this point ``functionLibrary.cc`` should look like:
@@ -621,31 +598,21 @@ At this point ``functionLibrary.cc`` should look like:
 
     template <typename ReturnT>
     void declarePolynomialFunctions(py::module &mod, const std::string & suffix) {
-       py::class_<PolynomialFunction2<ReturnT>, BasePolynomialFunction2<ReturnT>> 
+       py::class_<PolynomialFunction2<ReturnT>, BasePolynomialFunction2<ReturnT>>
             clsPolynomialFunction2(mod, ("PolynomialFunction2" + suffix).c_str());
         clsPolynomialFunction2.def(py::init<unsigned int>());
         clsPolynomialFunction2.def(py::init<std::vector<double> const &>());
-    
-        /* Members */
+
+        /* Operators */
         clsPolynomialFunction2.def("__call__", [](PolynomialFunction2<ReturnT> &t, double &x, double &y) -> ReturnT {
                 return t(x,y);
-        });
+        }, py::is_operator());
     };
 
     PYBIND11_PLUGIN(_functionLibrary) {
         py::module mod("_functionLibrary", "Python wrapper for afw _functionLibrary library");
-    
+
         declarePolynomialFunctions<double>(mod, "D");
-
-        /* Module level */
-
-        /* Member types and enums */
-
-        /* Constructors */
-
-        /* Operators */
-
-        /* Members */
 
         return mod.ptr();
     }
@@ -683,11 +650,11 @@ Below is the relevant part of ``Function.h`` for ``BasePolynomialFunction2``:
             Function2<ReturnT>(params),
             _order(BasePolynomialFunction2::orderFromNParameters(static_cast<int>(params.size())))
         {}
-        
+
         /* Other methods unnecessary for this wrap hidden */
     };
 
-In this case it is safe to assume that ``BasePolynomialFunction2`` and any class that it inherits from will have the same set of return types, so we can create a single declare function
+In this case ``Function``, ``Function2`` and ``BasePolynomialFunction2`` are all templated on the same type. So we declare them together in one function template.
 
 .. code-block:: c++
 
@@ -700,7 +667,7 @@ As mentioned above, we should not assume that we need to inherit from ``Function
 
 .. code-block:: c++
 
-    py::class_<BasePolynomialFunction2<ReturnT>, Function2<ReturnT> > 
+    py::class_<BasePolynomialFunction2<ReturnT>, Function2<ReturnT> >
         clsBasePolynomialFunction2(mod, ("BasePolynomialFunction2" + suffix).c_str());
 
 There are no other methods of ``BasePolynomialFunction`` needed for the current test so we move on to ``Function2``, with the relevant code below:
@@ -725,12 +692,12 @@ There are no other methods of ``BasePolynomialFunction`` needed for the current 
         :
             Function<ReturnT>(params)
         {}
-        
+
         /* Other methods unnecessary for this wrap hidden */
     };
 
 So we see that ``Function2`` inherits from both ``Function`` and ``afw::table::io::PersistableFacade``.
-In this case it is not immediately obvious that we will need the latter class available to python so we only include ``Function`` in our class declaration (which we place before our ``BasePolynomialFunction2`` delcaration)
+In this case it is not immediately obvious that we will need the latter class available to Python, so we only include ``Function`` in our class declaration (which we place before our ``BasePolynomialFunction2`` declaration)
 
 .. code-block:: c++
 
@@ -781,7 +748,7 @@ Looking at the relevant part of the code
     /* Other methods unnecessary for this wrap hidden */
     }
 
-We see that ``Function`` also has multiple inheritances but for now we ignore them (as it does not appear that we necessarily need them exposed to python) when we declare it:
+We see that ``Function`` also has multiple inheritances but for now we ignore them (as it does not appear that we necessarily need them exposed to Python) when we declare it:
 
 .. code-block:: c++
 
@@ -801,7 +768,7 @@ Recall from :ref:`test_minimize` that two methods of ``PolynomialFunction2D`` ar
      clsFunction.def("getNParameters", &Function<ReturnT>::getNParameters);
      clsFunction.def("setParameters", &Function<ReturnT>::setParameters);
 
-There are no other ``Function`` methods needed for now, so we leave wrapping them for the future if they are necessary on the python side of the stack.
+There are no other ``Function`` methods needed for now, so we leave wrapping them for the future if they are necessary on the Python side of the stack.
 
 At this point ``function.cc`` should look like
 
@@ -832,30 +799,19 @@ At this point ``function.cc`` should look like
         py::class_<Function2<ReturnT>, Function<ReturnT>> clsFunction2(mod, ("Function2"+suffix).c_str());
 
         /* BasePolynomialFunction2 */
-        py::class_<BasePolynomialFunction2<ReturnT>, Function2<ReturnT> > 
+        py::class_<BasePolynomialFunction2<ReturnT>, Function2<ReturnT> >
             clsBasePolynomialFunction2(mod, ("BasePolynomialFunction2" + suffix).c_str());
     };
 
     PYBIND11_PLUGIN(_function) {
         py::module mod("_function", "Python wrapper for afw _function library");
-    
+
         declareFunctions<double>(mod, "D");
-    
-
-        /* Module level */
-
-        /* Member types and enums */
-
-        /* Constructors */
-
-        /* Operators */
-
-        /* Members */
 
         return mod.ptr();
     }
 
-and you should be able to compile the code (hopefully you have been building after each new class or you could come across multiple errors at this point) using ``scons python lib11.
+and you should be able to compile the code (hopefully you have been building after each new class or you could come across multiple errors at this point) using ``scons python lib``.
 You should now be able to run ``py.test tests/testMinimize.py`` and pass all of the tests.
 
 
