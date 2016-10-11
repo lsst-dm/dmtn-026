@@ -814,6 +814,326 @@ At this point ``function.cc`` should look like
 and you should be able to compile the code (hopefully you have been building after each new class or you could come across multiple errors at this point) using ``scons python lib``.
 You should now be able to run ``py.test tests/testMinimize.py`` and pass all of the tests.
 
+testInterpolate.py
+------------------
+
+There are still multiple edge cases we have yet to encounter, including virtual funcitons, ndarrays, and enum types. All of these cases are needed to wrap testInterpolate.py with pybind11, so we use it to illustrate these procedures.
+
+.. code-block:: c++
+
+    from __future__ import absolute_import, division
+    from builtins import zip
+    from builtins import range
+    import unittest
+    import numpy as np
+    import lsst.utils.tests
+    import lsst.afw.math as afwMath
+    import lsst.pex.exceptions as pexExcept
+
+    class InterpolateTestCase(lsst.utils.tests.TestCase):
+
+        """A test case for Interpolate Linear"""
+
+        def setUp(self):
+            self.n = 10
+            self.x = np.zeros(self.n, dtype=float)
+            self.y1 = np.zeros(self.n, dtype=float)
+            self.y2 = np.zeros(self.n, dtype=float)
+            self.y0 = 1.0
+            self.dydx = 1.0
+            self.d2ydx2 = 0.5
+
+            for i in range(0, self.n, 1):
+                self.x[i] = i
+                self.y1[i] = self.dydx*self.x[i] + self.y0
+                self.y2[i] = self.d2ydx2*self.x[i]*self.x[i] + self.dydx*self.x[i] + self.y0
+
+            self.xtest = 4.5
+            self.y1test = self.dydx*self.xtest + self.y0
+            self.y2test = self.d2ydx2*self.xtest*self.xtest + self.dydx*self.xtest + self.y0
+
+        def tearDown(self):
+            del self.x
+            del self.y1
+            del self.y2
+
+        def testLinearRamp(self):
+
+            # === test the Linear Interpolator ============================
+            # default is akima spline
+            yinterpL = afwMath.makeInterpolate(self.x, self.y1)
+            youtL = yinterpL.interpolate(self.xtest)
+
+            self.assertEqual(youtL, self.y1test)
+
+        def testNaturalSplineRamp(self):
+
+            # === test the Spline interpolator =======================
+            # specify interp type with the string interface
+            yinterpS = afwMath.makeInterpolate(self.x, self.y1, afwMath.Interpolate.NATURAL_SPLINE)
+            youtS = yinterpS.interpolate(self.xtest)
+
+            self.assertEqual(youtS, self.y1test)
+
+        def testAkimaSplineParabola(self):
+            """test the Spline interpolator"""
+            # specify interp type with the enum style interface
+            yinterpS = afwMath.makeInterpolate(self.x, self.y2, afwMath.Interpolate.AKIMA_SPLINE)
+            youtS = yinterpS.interpolate(self.xtest)
+
+            self.assertEqual(youtS, self.y2test)
+
+        def testConstant(self):
+            """test the constant interpolator"""
+            # [xy]vec:   point samples
+            # [xy]vec_c: centered values
+            xvec = np.array([0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0])
+            xvec_c = np.array([-0.5, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5])
+            yvec = np.array([1.0, 2.4, 5.0, 8.4, 13.0, 18.4, 25.0, 32.6, 41.0, 50.6])
+            yvec_c = np.array([1.0, 1.7, 3.7, 6.7, 10.7, 15.7, 21.7, 28.8, 36.8, 45.8, 50.6])
+
+            interp = afwMath.makeInterpolate(xvec, yvec, afwMath.Interpolate.CONSTANT)
+
+            for x, y in zip(xvec_c, yvec_c):
+                self.assertAlmostEqual(interp.interpolate(x + 0.1), y)
+                self.assertAlmostEqual(interp.interpolate(x), y)
+
+            self.assertEqual(interp.interpolate(xvec[0] - 10), yvec[0])
+            n = len(yvec)
+            self.assertEqual(interp.interpolate(xvec[n - 1] + 10), yvec[n - 1])
+
+            for x, y in reversed(list(zip(xvec_c, yvec_c))):  # test caching as we go backwards
+                self.assertAlmostEqual(interp.interpolate(x + 0.1), y)
+                self.assertAlmostEqual(interp.interpolate(x), y)
+
+            i = 2
+            for x in np.arange(xvec_c[i], xvec_c[i + 1], 10):
+                self.assertEqual(interp.interpolate(x), yvec_c[i])
+
+        #@unittest.skip("testing")
+        def testInvalidInputs(self):
+            """Test that invalid inputs cause an abort"""
+
+            self.assertRaises(pexExcept.OutOfRangeError,
+                              lambda: afwMath.makeInterpolate(np.array([], dtype=float), np.array([], dtype=float),
+                                                              afwMath.Interpolate.CONSTANT)
+                              )
+
+            afwMath.makeInterpolate(np.array([0], dtype=float), np.array([1], dtype=float),
+                                    afwMath.Interpolate.CONSTANT)
+
+            self.assertRaises(pexExcept.OutOfRangeError,
+                              lambda: afwMath.makeInterpolate(np.array([0], dtype=float), np.array([1], dtype=float),
+                                                              afwMath.Interpolate.LINEAR))
+
+
+    class TestMemory(lsst.utils.tests.MemoryTestCase):
+        pass
+
+    def setup_module(module):
+        lsst.utils.tests.init()
+
+    if __name__ == "__main__":
+        lsst.utils.tests.init()
+        unittest.main()
+
+Here we see that there is only one class called from this test: ``lsst::afw::math::Interpolate``. We make sure to add the appropriate lines to ``mathLib.py``, ``Sconscript``, and ``interpolate.cc`` as we saw in :ref:`new_cpp`.
+
+Smart Pointers
+^^^^^^^^^^^^^^
+
+We declare the class in the standard way, adding
+
+.. code-block:: c++
+
+    py::class_<Interpolate, std::shared_ptr<Interpolate>> clsInterpolate(mod, "Interpolate");
+
+to the module section of ``interpolate.cc``.
+``Interpolate`` itself is a virtual class and makes use of a shared pointer (see :ref:`virtual_functions`), so notice that here we added ``std::shared_ptr<Interpolate>`` as an inherited class, which is necessary to access Interpolate as a pointer.
+
+Enum types
+^^^^^^^^^^
+
+The first method is an enum called ``Style``.
+We declare a value for each keyword that points to the corresponding value in the header file, with an ``export_values()`` method at the end:
+
+.. code-block:: c++
+
+    py::enum_<Interpolate::Style>(clsInterpolate, "Style")
+        .value("UNKNOWN", Interpolate::Style::UNKNOWN)
+        .value("CONSTANT", Interpolate::Style::CONSTANT)
+        .value("LINEAR", Interpolate::Style::LINEAR)
+        .value("NATURAL_SPLINE", Interpolate::Style::NATURAL_SPLINE)
+        .value("CUBIC_SPLINE", Interpolate::Style::CUBIC_SPLINE)
+        .value("CUBIC_SPLINE_PERIODIC", Interpolate::Style::CUBIC_SPLINE_PERIODIC)
+        .value("AKIMA_SPLINE", Interpolate::Style::AKIMA_SPLINE)
+        .value("AKIMA_SPLINE_PERIODIC", Interpolate::Style::AKIMA_SPLINE_PERIODIC)
+        .value("NUM_STYLES", Interpolate::Style::NUM_STYLES)
+        .export_values();
+
+.. warning::
+
+    Do not forget to add the ``.export_values()`` at the end or your enumerated types will not be added to the class!
+
+.. _virtual_functions:
+
+Virtual Functions and Classes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Notice that ``Interpolate`` is a virtual class that cannot be called directly.
+Through examination of ``testInterpolate.py`` we see that ``Interpolate`` objects are created by using the ``makeInterpolate`` function, which is of type ``PTR(Interpolate)``.
+We will wrap ``makeInterpolate`` in :ref:`function_kwargs` but first we finish wrapping ``Interpolate``.
+The main function is the method ``interpolate``, which can be called with a double, list, or ndarray, however calling interpolate with a double is actually a virtual function, so we cannot wrap it directly.
+
+Instead we create a lambda function:
+
+.. code-block:: c++
+
+    clsInterpolate.def("interpolate", [](Interpolate &t, double const x) -> double {
+            return t.interpolate(x);
+    });
+
+This defines the function ``Interpolate::interpolate``, which then calls the virtual function ``interpolate`` of the ``Interpolate`` object directly (the method exists, just not in a way that it can be wrapped by pybind11).
+
+NDArray's
+^^^^^^^^^
+
+Since the ``interpolate`` method is an overloaded function, only one of which is virtual, we can wrap the other function definitions in the traditional way:
+
+.. code-block:: c++
+
+    clsInterpolate.def("interpolate",
+                       (std::vector<double> (Interpolate::*) (std::vector<double> const&) const)
+                           &Interpolate::interpolate);
+    clsInterpolate.def("interpolate",
+                       (ndarray::Array<double, 1> (Interpolate::*) (ndarray::Array<double const, 1> const&)
+                           const) &Interpolate::interpolate);
+
+However, since we are using ndarray's we also need to include the numpy and ndarray headers at the top of ``interpolate.cc``
+
+.. code-block:: c++
+
+    #include "numpy/arrayobject.h"
+    #include "ndarray/pybind11.h"
+    #include "ndarray/converter.h"
+
+It is also necessary to check that numpy has been installed and setup (otherwise unexpected segfaults will occcur), so in the module definition we add
+
+.. code-block:: c++
+
+    if (_import_array() < 0) {
+            PyErr_SetString(PyExc_ImportError, "numpy.core.multiarray failed to import");
+            return nullptr;
+        }
+
+.. _function_kwargs:
+
+Wrapping Functions with Default Arguments
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The final method remaining to wrap in ``interpolate.h`` is ``makeInterpolate``, which creates an ``Interpolate`` object from the virtual class.
+
+This is an overloaded function, so we define it in the usual way but add ``py::arg("paremeter")`` for *all* of the arguments of the function (not just the ones that we need to give default values).
+In this case
+
+.. code-block:: c++
+
+    mod.def("makeInterpolate", 
+                       (PTR(Interpolate) (*)(std::vector<double> const &,
+                                             std::vector<double> const &,
+                                             Interpolate::Style const)) makeInterpolate,
+                       py::arg("x"), py::arg("y"), py::arg("style")=Interpolate::AKIMA_SPLINE);
+    mod.def("makeInterpolate", 
+                       (PTR(Interpolate) (*)(ndarray::Array<double const, 1> const &,
+                                             ndarray::Array<double const, 1> const &y,
+                                             Interpolate::Style const)) makeInterpolate,
+                       py::arg("x"), py::arg("y"), py::arg("style")=Interpolate::AKIMA_SPLINE);
+
+This can be slightly simplified by adding ``using namespace pybind11::literals;`` to the top of ``interpolate.cc``, which allows us to replace ``py:arg("parameter")`` with ``"parameter"_a``.
+
+.. note::
+
+    If pybind11 returns an error during wrapping that the number of arguments does not match, check that you have wrapped all of the arguments with the correct types. Also make sure that you are defining the function in the correct place (ie. is it defined in the module or inside of a class).
+
+.. _wrapped_interpolate:
+
+Wrapped interpolate.cc
+^^^^^^^^^^^^^^^^^^^^^^
+
+When finished ``interpolate.cc`` should look like:
+
+.. code-block:: c++
+
+    #include <pybind11/pybind11.h>
+    //#include <pybind11/operators.h>
+    #include <pybind11/stl.h>
+
+    #include "numpy/arrayobject.h"
+    #include "ndarray/pybind11.h"
+    #include "ndarray/converter.h"
+
+    #include "lsst/afw/math/interpolate.h"
+
+    namespace py = pybind11;
+    using namespace pybind11::literals;
+
+    using namespace lsst::afw::math;
+
+    PYBIND11_DECLARE_HOLDER_TYPE(MyType, std::shared_ptr<MyType>);
+
+    PYBIND11_PLUGIN(_interpolate) {
+        py::module mod("_interpolate", "Python wrapper for afw _interpolate library");
+
+        if (_import_array() < 0) {
+                PyErr_SetString(PyExc_ImportError, "numpy.core.multiarray failed to import");
+                return nullptr;
+            }
+
+        mod.def("makeInterpolate", 
+                           (PTR(Interpolate) (*)(std::vector<double> const &,
+                                                 std::vector<double> const &,
+                                                 Interpolate::Style const)) makeInterpolate,
+                           "x"_a, "y"_a, "style"_a=Interpolate::AKIMA_SPLINE);
+        mod.def("makeInterpolate", 
+                           (PTR(Interpolate) (*)(ndarray::Array<double const, 1> const &,
+                                                 ndarray::Array<double const, 1> const &y,
+                                                 Interpolate::Style const)) makeInterpolate,
+                           "x"_a, "y"_a, "style"_a=Interpolate::AKIMA_SPLINE);
+        /* Module level */
+
+        /* Member types and enums */
+
+        /* Constructors */
+
+        /* Operators */
+
+        /* Members */
+        
+        py::class_<Interpolate, std::shared_ptr<Interpolate>> clsInterpolate(mod, "Interpolate");
+        py::enum_<Interpolate::Style>(clsInterpolate, "Style")
+            .value("UNKNOWN", Interpolate::Style::UNKNOWN)
+            .value("CONSTANT", Interpolate::Style::CONSTANT)
+            .value("LINEAR", Interpolate::Style::LINEAR)
+            .value("NATURAL_SPLINE", Interpolate::Style::NATURAL_SPLINE)
+            .value("CUBIC_SPLINE", Interpolate::Style::CUBIC_SPLINE)
+            .value("CUBIC_SPLINE_PERIODIC", Interpolate::Style::CUBIC_SPLINE_PERIODIC)
+            .value("AKIMA_SPLINE", Interpolate::Style::AKIMA_SPLINE)
+            .value("AKIMA_SPLINE_PERIODIC", Interpolate::Style::AKIMA_SPLINE_PERIODIC)
+            .value("NUM_STYLES", Interpolate::Style::NUM_STYLES)
+            .export_values();
+
+        clsInterpolate.def("interpolate", [](Interpolate &t, double const x) -> double {
+                return t.interpolate(x);
+        });
+        clsInterpolate.def("interpolate",
+                           (std::vector<double> (Interpolate::*) (std::vector<double> const&) const)
+                               &Interpolate::interpolate);
+        clsInterpolate.def("interpolate",
+                           (ndarray::Array<double, 1> (Interpolate::*) (ndarray::Array<double const, 1> const&)
+                               const) &Interpolate::interpolate);
+
+        return mod.ptr();
+    }
 
 .. _gitlock: https://github.com/lsst-dm/gitlock
 .. _inheritance: https://pybind11.readthedocs.io/en/latest/classes.html#inheritance
