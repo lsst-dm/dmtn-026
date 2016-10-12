@@ -118,7 +118,7 @@ Activate the Test
 -----------------
 
 All of the tests that have yet to be wrapped are commented out using the tag ``#pybind11#``. The script "activate_test.py" can be used to remove the comments so that the test runs properly.
-For tests with multiple test classes and methods it may be useful to add the decorator ``@unittest.skip("temporary skip wihile wrapping")`` to functions in a test that have not been wrapped yet.
+For tests with multiple test classes and methods it may be useful to add the decorator ``@unittest.skip("temporary skip while wrapping")`` to functions in a test that have not been wrapped yet.
 
 Tutorial
 ========
