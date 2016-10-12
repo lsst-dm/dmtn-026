@@ -1135,5 +1135,18 @@ When finished ``interpolate.cc`` should look like:
         return mod.ptr();
     }
 
+.. _fep:
+
+Frequently Encountered Problems
+===============================
+
+There are a number of errors, issues, and other problems that you are likely to come across during wrapping.
+This section has some hints on what might be causing a particular problem you are encountering.
+
+Casting
+-------
+
+SWIG and pybind11 handle inheritance in different ways. In SWIG, if a class B inherits from A, a pointer that clones B can return a type A, which is undesirable. There was a lot of machinery, including a ``.cast`` method that was used to recase A as B. This is not necessary with pybind11 so all casting procedures can be removed (or at the very least commented out) and tests for casting can be skipped with a ``@unittest.skip("Skip for pybind11")``.
+
 .. _gitlock: https://github.com/lsst-dm/gitlock
 .. _inheritance: https://pybind11.readthedocs.io/en/latest/classes.html#inheritance
