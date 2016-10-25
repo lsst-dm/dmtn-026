@@ -1135,6 +1135,13 @@ When finished ``interpolate.cc`` should look like:
         return mod.ptr();
     }
 
+Running all Tests
+=================
+
+Before merging a test with the main branch ``DM-6168`` you should always ensure that all of the tests wrapped with pybind11, not just the new ones wrapped in the current branch, still succeed. 
+There is a text file ``tests/test.txt`` that lists all of the tests in the current package.
+Running "py.test \`sed -e '/^#/d' tests/test.txt\`" will run only the uncommented (wrapped) tests.
+
 .. _fep:
 
 Frequently Encountered Problems
