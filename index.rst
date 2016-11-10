@@ -16,6 +16,14 @@ from swig to pybind11.
 
 .. _installation:
 
+Additional documentation
+========================
+
+Also see the:
+
+* `The pybind11 upstream documentation <http://pybind11.readthedocs.io>`_ 
+* `The LSST pybind11 coding guidelines <https://dmtn-024.lsst.io>`_ 
+
 Installation
 ============
 
