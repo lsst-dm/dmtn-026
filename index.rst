@@ -10,7 +10,7 @@ Scope of the document
 =====================
 
 This document is designed to assist developers involved in porting LSST Science Pipelines
-from swig to pybind11. For more details on the styling conventions see ??.
+from swig to pybind11.
 
 .. _intro:
 
@@ -25,7 +25,7 @@ To install all of the currently wrapped code with lsstsw, use
 
     rebuild -r tickets/DM-6168 {{package name}}
 
-where {{package name}} is the name of the package that is currently being wrapped (for instance afw).
+where ``{{package name}}`` is the name of the package that is currently being wrapped (for instance ``afw``).
 This will build the most up to date version of the stack that has been ported to pybind11, as the tests that have not been wrapped are all commented out (see section :ref:`activate_test`).
 
 Don't forget to tag the new build as current with EUPS:
@@ -34,9 +34,9 @@ Don't forget to tag the new build as current with EUPS:
 
     eups tags --clone bNNNN current
 
-where bNNN is the current build number.
+where ``bNNN`` is the current build number.
 
-You will also need to install `gitlock`_ to allow you to get a soft lock on files that you are working on.
+If you plan to collaborate with multiple people on the same ticket you will also need to install `gitlock`_ to allow you to get a soft lock on files that you are working on.
 Follow the instructions on the `gitlock`_ page for details.
 
 .. _new_package:
@@ -44,8 +44,8 @@ Follow the instructions on the `gitlock`_ page for details.
 Wrapping a new package
 ======================
 
-Since many packages have C++ classes and functions that are not exposed to Python, there are large chunks of code that are not currently tested explicitely.
-Without tests there is no way to know whether these methods have been properly wrapped, so for now we only wrap methods that are called from Python tests.
+Since many packages have C++ classes and functions that are not exposed to Python, there are large chunks of C++ code that are not currently tested explicitely.
+Without tests there is no way to know whether the wrapping was succesfull, so for now we only wrap C++ code that are called from Python tests.
 A single test might import from multiple submodules of the current package, so we found that it is more efficient to wrap by test as opposed to wrapping by module.
 The following section outlines the procedure to begin wrapping a new package.
 
@@ -117,8 +117,9 @@ will unlock the file and allow others to work on it.
 Activate the Test
 -----------------
 
-All of the tests that have yet to be wrapped are commented out using the tag ``#pybind11#``. The script "activate_test.py" can be used to remove the comments so that the test runs properly.
-For tests with multiple test classes and methods it may be useful to add the decorator ``@unittest.skip("temporary skip while wrapping")`` to functions in a test that have not been wrapped yet.
+All of the tests that have yet to be wrapped are commented out in a file called ``tests/test.txt`` (currently only in ``afw``).
+To start wrapping the code for a test uncomment it, run it and see what breaks.
+For tests with multiple test classes and methods it may be useful to add the decorator ``@unittest.skip("pybind11 temporary skip while wrapping")`` to functions in a test that have not been wrapped yet.
 
 Tutorial
 ========
@@ -132,14 +133,20 @@ Before we make any changes it's a good idea to compile the cloned repository to 
 
 .. code-block:: shell
 
-    scons
+    git clean -dfx
 
-to build afw.
+followed by
+
+.. code-block:: shell
+
+    scons lib python
+
+to do a clean build of afw.
 Since this is your first build of afw it will take a while but as you make changes, using
 
 .. code-block:: shell
 
-    scons python lib
+    scons lib python
 
 only builds the newly wrapped headers, so development is much faster than with SWIG).
 
@@ -153,19 +160,7 @@ Before we start working we want to lock the current test using
     gitlock lock afw -f tests/testMinimize.py
 
 from the main afw repository directory (see :ref:`locking` for more on locking and unlocking files).
-Next we activate the test. Enter the ``pb11_scripts`` directory and type
-
-.. code-block:: bash
-
-    python activate_test.py <path to test>
-
-For example, if afw is contained in ``$LSST/code/afw`` use
-
-.. code-block:: bash
-
-    python activate_test $LSST/code/afw/tests/testMinimize.py
-
-This removes all of the lines commented out to allow pybind11 to build the package.
+Next we activate the test (by uncommenting it in the ``tests/test.txt`` file).
 
 .. _test_minimize:
 
@@ -355,7 +350,7 @@ From the shell prompt run
 
 .. code-block:: bash
 
-    scons python lib
+    scons lib python
 
 to build all of the changes you made to afw.
 If the build failed, go back and verify that all of your function definitions used the correct syntax as displayed above.
@@ -811,13 +806,13 @@ At this point ``function.cc`` should look like
         return mod.ptr();
     }
 
-and you should be able to compile the code (hopefully you have been building after each new class or you could come across multiple errors at this point) using ``scons python lib``.
+and you should be able to compile the code (hopefully you have been building after each new class or you could come across multiple errors at this point) using ``scons lib python``.
 You should now be able to run ``py.test tests/testMinimize.py`` and pass all of the tests.
 
 testInterpolate.py
 ------------------
 
-There are still multiple edge cases we have yet to encounter, including virtual funcitons, ndarrays, and enum types. All of these cases are needed to wrap testInterpolate.py with pybind11, so we use it to illustrate these procedures.
+There are still multiple edge cases we have yet to encounter, including virtual functions, ndarrays, and enum types. All of these cases are needed to wrap testInterpolate.py with pybind11, so we use it to illustrate these procedures.
 
 .. code-block:: c++
 
@@ -977,10 +972,10 @@ We declare a value for each keyword that points to the corresponding value in th
 
 .. _virtual_functions:
 
-Virtual Functions and Classes
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Virtual Functions and abstract Classes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Notice that ``Interpolate`` is a virtual class that cannot be called directly.
+Notice that ``Interpolate`` is an abstract class that cannot be called directly.
 Through examination of ``testInterpolate.py`` we see that ``Interpolate`` objects are created by using the ``makeInterpolate`` function, which is of type ``PTR(Interpolate)``.
 We will wrap ``makeInterpolate`` in :ref:`function_kwargs` but first we finish wrapping ``Interpolate``.
 The main function is the method ``interpolate``, which can be called with a double, list, or ndarray, however calling interpolate with a double is actually a virtual function, so we cannot wrap it directly.
