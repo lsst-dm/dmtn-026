@@ -35,11 +35,19 @@ To install all of the currently wrapped code with pybind11, use
 
 .. code-block:: bash
 
-    rebuild -r tickets/DM-8467 {{package name}}
+    rebuild -r tickets/DM-8467 -r tickets/DM-NNNN {{package name}}
 
-where ``{{package name}}`` is the name of the package that is currently being wrapped (for instance ``afw``).
+where ``{{package name}}`` is the name of the package that is currently being wrapped (for instance ``afw``)
+and ``NNNN`` is the ticket number for the pybind11 port of the new package.
+
+.. note::
+
+    If you are wrapping a new package, you will first have to prepare the package as described in
+    `new_package`_ to deactivate the tests. Otherwise scons will fail and you won't be able to setup
+    the new package.
+
 This will build the most up to date version of the stack that has been ported to pybind11, 
-as the tests that have not been wrapped are all commented out (see section :ref:`activate_test`).
+as the tests that have not been wrapped are all commented out (see section :ref:`activate-test`).
 
 Don't forget to tag the new build as current with EUPS:
 
@@ -56,7 +64,7 @@ Wrapping a new package
 
 Since many packages have C++ classes and functions that are not exposed to Python, 
 there are large chunks of C++ code that are not currently tested explicitly.
-Without tests there is no way to know whether the wrapping was successfull, 
+Without tests there is no way to know whether the wrapping was successful, 
 so for now we only wrap C++ code that are called from Python tests.
 A single test might import from multiple submodules of the current package, 
 so we found that it is more efficient to wrap by test as opposed to wrapping by module.
@@ -65,11 +73,29 @@ The following section outlines the procedure to begin wrapping a new package.
 Preparing Package
 -----------------
 
+To begin wrapping a new package you will need to create two new ticket branches in the 
+packages repository. First checkout the ``master`` branch of the repository you are going to wrap and
+
+.. code-block:: bash
+
+    git checkout -b tickets/DM-8468
+
+which creates a branch for the pybind11 master branch.
+Next create a branch for the current ticket
+
+.. code-block:: bash
+
+    git checkout -b tickets/DM-NNNN
+
+where NNNN is the ticket number.
+
 Before you can begin wrapping a package it is necessary to modify the structure of the package,
 which includes modifying the ``SConscript`` files, ``__init__.py`` files, and ``moduleLib.py`` files;
 adding a C++ file for every header file in the ``include`` directory;
-and removing all of the SWIG files. This is all done by the script ``build_templates.py``.
-If the name of the repository is the same as the diretory name on your computer 
+and removing all of the SWIG files. This is all done by the script 
+`build_templates.py <https://jira.lsstcorp.org/browse/DM-7720>`_.
+
+If the name of the repository is the same as the directory name on your computer 
 (for example "afw" or "meas_deblender") you can execute the script using
 
 .. code-block:: bash
@@ -121,13 +147,13 @@ and the line
 
 .. code-block:: python
 
-    scripts.BasicSConscript.tests(pyList=pybind11_ported_tests)
+    scripts.BasicSConscript.tests()
 
 must be changed to
 
 .. code-block:: python
 
-    scripts.BasicSConscript.tests()
+    scripts.BasicSConscript.tests(pyList=pybind11_ported_tests)
 
 .. note::
 
@@ -200,7 +226,7 @@ As you wrap the package it can be useful to compile the package using
 which only builds the changes to the package and does not run any of the tests,
 which can save a substantial amount of time.
 
-.. _activate_test:
+.. _activate-test:
 
 Activating and skipping tests
 -----------------------------
@@ -243,13 +269,11 @@ Since this is your first build of afw it will take a while but as you make chang
 
     scons lib python
 
-only builds the newly wrapped headers (so development is much faster than with SWIG).
-
 Activate the test
 -----------------
 
 Activate the test file by uncommenting it in the ``tests/test.txt`` file and add decorators to all but
-the first test as described in `activate_test`_.
+the first test as described in :ref:`activate-test`.
 
 .. _test_minimize:
 
@@ -425,7 +449,9 @@ At this time ``minimize.cc`` should look like
 
     namespace py = pybind11;
 
-    namespace lsst { namespace afw { namespace math {
+    namespace lsst {
+    namespace afw {
+    namespace math {
 
     PYBIND11_PLUGIN(_minimize) {
         py::module mod("_minimize", "Python wrapper for afw _minimize library");
@@ -484,7 +510,7 @@ our ``clsFitResults`` code using
                                          std::vector<double> const &,
                                          std::vector<double> const &,
                                          std::vector<double> const &,
-                                         double)) minimize<double>);
+                                         double)) &minimize<double>);
 
 .. note::
 
@@ -506,7 +532,7 @@ Similarly, beneath this code we add the second set of parameters for the overloa
                                          std::vector<double> const &,
                                          std::vector<double> const &,
                                          std::vector<double> const &,
-                                         double)) minimize<double>);
+                                         double)) &minimize<double>);
 
 We could copy these lines and change the templates to use type ``float`` if we wanted to,
 or instead we can write a function that allow us to template an arbitrarily large number of different types.
@@ -527,7 +553,7 @@ we can define a template function to declare the ``minimize`` function:
                                              std::vector<double> const &,
                                              std::vector<double> const &,
                                              std::vector<double> const &,
-                                             double)) minimize<ReturnT>);
+                                             double)) &minimize<ReturnT>);
         mod.def("minimize", (FitResults (*) (lsst::afw::math::Function2<ReturnT> const &,
                                              std::vector<double> const &,
                                              std::vector<double> const &,
@@ -535,7 +561,7 @@ we can define a template function to declare the ``minimize`` function:
                                              std::vector<double> const &,
                                              std::vector<double> const &,
                                              std::vector<double> const &,
-                                             double)) minimize<ReturnT>);
+                                             double)) &minimize<ReturnT>);
     };
     } // namespace
 
@@ -576,7 +602,9 @@ Putting it all together, the file ``minimize.cc`` should look like
 
     namespace py = pybind11;
 
-    namespace lsst { namespace afw { namespace math {
+    namespace lsst {
+    namespace afw {
+    namespace math {
 
     namespace {
     template <typename ReturnT>
@@ -617,12 +645,8 @@ Putting it all together, the file ``minimize.cc`` should look like
     
     }}} // lsst::afw::math
 
-.. note::
-
-    When casting an overloaded class method ``ClassName``, the ``(*)`` must be replaced with
-    ``ClassName::(*)``.
-
-If instead, minimize had been a class method of MinimizeClass, we would have used
+When casting an overloaded class method ``ClassName``, the ``(*)`` must be replaced with ``(ClassName::*)``.
+So if minimize had been a class method of MinimizeClass, we would have used
     
 .. code-block:: c++
     
@@ -633,11 +657,9 @@ If instead, minimize had been a class method of MinimizeClass, we would have use
                                                         std::vector<double> const &,
                                                         std::vector<double> const &,
                                                         double)) &MinimizeClass::minimize<ReturnT>);
-    
-Notice the ``&`` added to the member function ``MinimizeClass::minimize<ReturnT>``.
 
-Another subtlety is when wrapping a static method of a class.
-In that case we use ``def_static`` and once again use ``(*)`` instead of ``FitResults::*``:
+Another subtlety is encountered when wrapping a static method of a class,
+where we use ``def_static`` and once again use ``(*)`` instead of ``FitResults::*``:
 
 .. code-block:: c++
 
@@ -776,7 +798,9 @@ At this point ``functionLibrary.cc`` should look like:
 
     namespace py = pybind11;
 
-    namespace lsst { namespace afw { namespace math {
+    namespace lsst {
+    namespace afw {
+    namespace math {
 
     namespace {
     template <typename ReturnT>
@@ -989,7 +1013,9 @@ At this point ``function.cc`` should look like
 
     namespace py = pybind11;
 
-    namespace lsst { namespace afw { namespace math {
+    namespace lsst {
+    namespace afw {
+    namespace math {
 
     namespace {
     template<typename ReturnT>
@@ -1156,7 +1182,7 @@ Here we see that there is only one class called from this test: ``lsst::afw::mat
 We make sure to add the appropriate lines to ``mathLib.py``, ``Sconscript``, and ``interpolate.cc``
 as we saw in :ref:`new_cpp`.
 
-Below is the interpolate.h code:
+Below is the ``interpolate.h`` code:
 
 .. code-block:: c++
 
@@ -1245,7 +1271,7 @@ to the module section of ``interpolate.cc``.
     One of the most frequent causes of segfaults in class wrapped in pybind11 is to inherit from a
     class with a shared_pointer but not include the std_shared parameter. For example, if a class
     ``BetterInterpolate`` inherits from interpolate, it must include ``std::shared_ptr<BetterInterpolate``
-    in its class definition. See section `segfaults`_ for more.
+    in its class definition. See section :ref:`segfaults` for more.
 
 Enum types
 ^^^^^^^^^^
@@ -1329,7 +1355,7 @@ However, since we are using ndarray's we also need to include the numpy and ndar
     #include "ndarray/converter.h"
 
 It is also necessary to check that numpy has been installed and setup
-(otherwise unexpected segfaults will occcur), so in the module definition we add
+(otherwise unexpected segfaults will occur), so in the module definition we add
 
 .. code-block:: c++
 
@@ -1396,7 +1422,9 @@ When finished ``interpolate.cc`` should look like:
     namespace py = pybind11;
     using namespace pybind11::literals;
 
-    namespace lsst { namespace afw { namespace math {
+    namespace lsst {
+    namespace afw {
+    namespace math {
 
     PYBIND11_PLUGIN(_interpolate) {
         py::module mod("_interpolate", "Python wrapper for afw _interpolate library");
@@ -1526,7 +1554,7 @@ The relevant pybind11 wrapper code ``arrays.cc`` is shown below:
 In this case it is useful to make the ``get`` method in
 ``ArrayFKey`` and ``ArrayDKey`` more pythonic by allowing them to
 accept slices as well as indices, so we create a new file ``arrays.py``
-(notice the difference between this and ``_arrays.py``, which is created by pybind11)
+(notice the difference between this and the ``_arrays`` module, which is created by pybind11)
 that begins with
 
 .. code-block:: python
@@ -1620,7 +1648,7 @@ Smart Pointers
 ^^^^^^^^^^^^^^
 
 The vast majority of the segfaults you encounter will be caused by inheriting a class that is defined
-with a smart pointer, but not using a smart pointer in the template definition of the new class
+with a smart pointer, but not using the same pointer in the template definition of the new class
 (see `smart_ptr`_). For example if a class A is defined using
 
 .. code-block:: c++
