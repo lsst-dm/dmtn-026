@@ -251,7 +251,7 @@ This can be done with
 
     $ py.test -k {{test}} tests/{{test file}}
 
-where ``{{test}}`` is the name of a test class or test file and ``{{test file}}`` is the name of the
+where ``{{test}}`` is the name of a test class or test method and ``{{test file}}`` is the name of the
 test file you are wrapping.
 
 Occasionally there may be an individual test that fails because of a bug in pybind11.
