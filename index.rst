@@ -12,7 +12,7 @@ Scope of the document
 This document is designed to assist developers involved in porting LSST Science Pipelines
 from swig to pybind11 by demonstrating how to wrap a package in pybind11.
 It assumes that the reader has already read (but not necessarily completely understood)
-the pybind11 documentation and the LSST coding guidelines (see `additional`_).
+the pybind11 documentation and the LSST coding guidelines (see :ref:`additional`).
 
 .. _intro:
 
@@ -35,7 +35,7 @@ To install all of the currently wrapped code with pybind11, use
 
 .. code-block:: bash
 
-    rebuild -r tickets/DM-8467 -r tickets/DM-NNNN {{package name}}
+    $ rebuild  -r tickets/DM-NNNN -r tickets/DM-8467 {{package name}}
 
 where ``{{package name}}`` is the name of the package that is currently being wrapped (for instance ``afw``)
 and ``NNNN`` is the ticket number for the pybind11 port of the new package.
@@ -43,8 +43,8 @@ and ``NNNN`` is the ticket number for the pybind11 port of the new package.
 .. note::
 
     If you are wrapping a new package, you will first have to prepare the package as described in
-    `new_package`_ to deactivate the tests. Otherwise scons will fail and you won't be able to setup
-    the new package.
+    :ref:`new_package` to create the new branch, deactivate the tests, and setup pybind11.
+    Otherwise scons will fail and you won't be able to setup the new package.
 
 This will build the most up to date version of the stack that has been ported to pybind11, 
 as the tests that have not been wrapped are all commented out (see section :ref:`activate-test`).
@@ -53,7 +53,7 @@ Don't forget to tag the new build as current with EUPS:
 
 .. code-block:: bash
 
-    eups tags --clone bNNNN current
+    $ eups tags --clone bNNNN current
 
 where ``bNNN`` is the current build number.
 
@@ -78,14 +78,14 @@ packages repository. First checkout the ``master`` branch of the repository you 
 
 .. code-block:: bash
 
-    git checkout -b tickets/DM-8468
+    $ git checkout -b tickets/DM-8467
 
 which creates a branch for the pybind11 master branch.
 Next create a branch for the current ticket
 
 .. code-block:: bash
 
-    git checkout -b tickets/DM-NNNN
+    $ git checkout -b tickets/DM-NNNN
 
 where NNNN is the ticket number.
 
@@ -93,14 +93,14 @@ Before you can begin wrapping a package it is necessary to modify the structure 
 which includes modifying the ``SConscript`` files, ``__init__.py`` files, and ``moduleLib.py`` files;
 adding a C++ file for every header file in the ``include`` directory;
 and removing all of the SWIG files. This is all done by the script 
-`build_templates.py <https://jira.lsstcorp.org/browse/DM-7720>`_.
+`build_templates.py <https://github.com/lsst-dm/dmtn-026/blob/tickets/DM-7720/python/build_templates.py>`_.
 
 If the name of the repository is the same as the directory name on your computer 
 (for example "afw" or "meas_deblender") you can execute the script using
 
 .. code-block:: bash
 
-    python build_templates.py {{repository directory}}
+    $ python build_templates.py {{repository directory}}
 
 where ``repository directory`` is a relative or absolute path to the location of the repository 
 that is going to be wrapped, for example ``../code/afw``.
@@ -116,14 +116,21 @@ Otherwise, if you don't want the code to infer the package name, use the command
 
 .. code-block:: bash
 
-    python build_templates.py {{repository directory}} {{package name}}
+    $ python build_templates.py {{repository directory}} {{package name}}
 
 where ``package name`` is the name of the package.
 
-This is step is only necessary if you are the first developer wrapping a new package,
+This step is only necessary if you are the first developer wrapping a new package,
 otherwise the template files have already been created.
-Don't forget to immediately commit these changes and push to the github remote so that other developers will
-have access to the new files.
+
+Updating EUPS
+-------------
+
+Scons will not use pybind11 unless it is setup, so in ``{{pkg}}/ups/{{pkg}}.table``,
+where ``{{pkg}}`` is the name of the package, you will need to add the dependency
+``setupRequired(pybind11)``.
+You also need to modify the ``dependencies`` in ``{{pkg}}/ups/{{pkg}}.cfg``, changing
+``"swig"`` to ``"pybind11"`` in ``"buildRequired"``.
 
 Deactivating the tests
 ----------------------
@@ -160,6 +167,11 @@ must be changed to
     It is possible that scripts.BasicSConscript.tests might contain other args or kwargs,
     in which case ``pyList=pybind11_ported_tests`` is inserted as a new kwarg.
 
+Don't forget to immediately commit these changes and push to the github remote so that other developers will
+have access to the new files.
+
+.. _all-tests:
+
 Running all Tests
 =================
 
@@ -168,9 +180,9 @@ of the tests wrapped with pybind11, not just the new ones wrapped in the current
 There is a text file ``tests/test.txt`` that lists all of the tests in the current package.
 To run all of the wrapped tests use:
 
-.. code::
+.. code:: bash
 
-    py.test `sed -e '/^#/d' tests/test.txt`
+    $ py.test `sed -e '/^#/d' tests/test.txt`
 
 .. _new_test:
 
@@ -185,8 +197,8 @@ once lsstsw has been setup you can simply use
 
 .. code-block:: bash
 
-    cd <repository directory>
-    setup -r .
+    $ cd <repository directory>
+    $ setup -r .
 
 to setup the package currently being wrapped.
 
@@ -204,7 +216,7 @@ To rebase from the current pybind11 master, DM-8467, use
 
 .. code-block:: bash
 
-    $ checkout tickets/DM-8467
+    $ git checkout tickets/DM-8467
     $ git fetch
     $ git reset --hard origin/tickets/DM-8467
     $ git checkout <branch>
@@ -223,7 +235,7 @@ As you wrap the package it can be useful to compile the package using
 
     $ scons python lib
 
-which only builds the changes to the package and does not run any of the tests,
+which only builds the changes to the package and does not build the docs or run any of the tests,
 which can save a substantial amount of time.
 
 .. _activate-test:
@@ -232,10 +244,34 @@ Activating and skipping tests
 -----------------------------
 
 Many test files have multiple tests and sometimes even multiple test classes inside of them.
-It can be useful to only run one test at a time (to prevent a bombardment of errors),
-so the decorator ``@unittest.skip("TODO:pybind11")`` should be added to all of the tests and
-classes other than the one you are currently wrapping.
+It can be useful to only run one test at a time (to prevent a bombardment of errors).
+This can be done with 
+
+.. code-block:: bash
+
+    $ py.test -k {{test}} tests/{{test file}}
+
+where ``{{test}}`` is the name of a test class or test file and ``{{test file}}`` is the name of the
+test file you are wrapping.
+
+Occasionally there may be an individual test that fails because of a bug in pybind11.
+In this case the test cane be skipped using the decorator ``@unittest.skip("TODO:pybind11")``.
+
 Also make sure to uncomment the test in ``tests/test.txt`` so that the test will be run by scons.
+
+Final Steps
+-----------
+
+Once an entire package has been wrapped with pybind11, it is necessary to remove
+``tests/test.txt``. In ``tests/SConscript`` you will also have to remove the lines
+
+.. code-block:: python
+
+    with open('test.txt', 'r') as f:
+        tests = f.readlines()
+    pybind11_ported_tests = [t for t in tests if not t.startswith('#')]
+
+and remove the kwarg ``pyList=pybind11_ported_tests`` from ``scripts.BasicSConscript.tests``.
 
 Tutorial
 ========
@@ -252,28 +288,30 @@ Compiling the Code
 Before we make any changes it's a good idea to compile the cloned repository to make sure that
 everything is setup correctly. From the ``afw`` repository main directory run
 
-.. code-block:: shell
+.. code-block:: bash
 
-    git clean -dfx
+    $ git clean -dfx
 
 followed by
 
-.. code-block:: shell
+.. code-block:: bash
 
-    scons lib python
+    $ scons
 
 to do a clean build of afw.
-Since this is your first build of afw it will take a while but as you make changes, using
+Since this is your first build of afw it will take a while but using
 
-.. code-block:: shell
+.. code-block:: bash
 
-    scons lib python
+    $ scons lib python
+
+as you make changes will only build the newly wrapped headers, making development much faster than with SWIG.
+One should remember to occasionally run all of the wrapped tests
 
 Activate the test
 -----------------
 
-Activate the test file by uncommenting it in the ``tests/test.txt`` file and add decorators to all but
-the first test as described in :ref:`activate-test`.
+Activate the test file by uncommenting it in the ``tests/test.txt`` file as described in :ref:`activate-test`.
 
 .. _test_minimize:
 
@@ -437,12 +475,18 @@ Next we add the attributes from ``FitResults`` in ``minimize.h`` beneath the new
 
 This is sufficient to bind the structure to our Python code.
 
+.. note::
+
+    You can also add names for the function arguments if you choose.
+    This is only required when using the function has default arguments but can be useful for
+    future developers, although including them is not required at this time.
+    For more on using named arguments see :ref:`function_kwargs`.
+
 At this time ``minimize.cc`` should look like
 
 .. code-block:: c++
 
     #include <pybind11/pybind11.h>
-    //#include <pybind11/operators.h>
     #include <pybind11/stl.h>
 
     #include "lsst/afw/math/minimize.h"
@@ -474,7 +518,7 @@ From the shell prompt run
 
 .. code-block:: bash
 
-    scons lib python
+    $ scons lib python
 
 to build all of the changes you made to afw.
 If the build failed, go back and verify that all of your method definitions used the 
@@ -595,7 +639,6 @@ Putting it all together, the file ``minimize.cc`` should look like
 .. code-block:: c++
 
     #include <pybind11/pybind11.h>
-    //#include <pybind11/operators.h>
     #include <pybind11/stl.h>
 
     #include "lsst/afw/math/minimize.h"
@@ -645,7 +688,8 @@ Putting it all together, the file ``minimize.cc`` should look like
     
     }}} // lsst::afw::math
 
-When casting an overloaded class method ``ClassName``, the ``(*)`` must be replaced with ``(ClassName::*)``.
+When casting an overloaded member function of a class ``ClassName``,
+the ``(*)`` must be replaced with ``(ClassName::*)``.
 So if minimize had been a class method of MinimizeClass, we would have used
     
 .. code-block:: c++
@@ -790,7 +834,6 @@ At this point ``functionLibrary.cc`` should look like:
 .. code-block:: c++
 
     #include <pybind11/pybind11.h>
-    //#include <pybind11/operators.h>
     #include <pybind11/stl.h>
 
     #include "lsst/afw/math/functionLibrary.h"
@@ -1006,7 +1049,6 @@ At this point ``function.cc`` should look like
 .. code-block:: c++
 
     #include <pybind11/pybind11.h>
-    //#include <pybind11/operators.h>
     #include <pybind11/stl.h>
 
     #include "lsst/afw/math/Function.h"
@@ -1151,7 +1193,6 @@ so we use it to illustrate these procedures. Here is the ``testInterpolate.py`` 
             for x in np.arange(xvec_c[i], xvec_c[i + 1], 10):
                 self.assertEqual(interp.interpolate(x), yvec_c[i])
 
-        #@unittest.skip("testing")
         def testInvalidInputs(self):
             """Test that invalid inputs cause an abort"""
 
@@ -1256,7 +1297,7 @@ Below is the ``interpolate.h`` code:
 Smart Pointers
 ^^^^^^^^^^^^^^
 
-When declaring a class that will be accessed via smart pointers,
+When declaring a class that will be accessed as a ``std::shared_ptr``,
 it is necessary to also include ``std::shared_ptr<ClassName>>`` in the definition of ``ClassName``.
 In this case, for the ``Interpolate`` class that means adding
 
@@ -1330,8 +1371,8 @@ which will call the overwritten method ``interpolate`` of the ``Interpolate`` ob
 
 .. _ndarray:
 
-NDArray's
-^^^^^^^^^
+NDArrays
+^^^^^^^^
 
 Since the ``interpolate`` method is an overloaded function, only one of which is virtual,
 we can wrap the other function definitions in the traditional way:
@@ -1410,7 +1451,6 @@ When finished ``interpolate.cc`` should look like:
 .. code-block:: c++
 
     #include <pybind11/pybind11.h>
-    //#include <pybind11/operators.h>
     #include <pybind11/stl.h>
 
     #include "numpy/arrayobject.h"
@@ -1690,7 +1730,7 @@ You might find that a particular class has been wrapped in a different module,
 but pybind11 fails to find a wrapped version of the class.
 For instance, if class ``A`` is wrapped from header ``foo.h``,
 and header ``bar.h`` has a class ``B`` with a method that returns an object with class ``A``,
-then a script using class ``B`` must import from both ``_foo`` and ``_bar``.
+then a python script using class ``B`` must import from both ``_foo`` and ``_bar``.
 If module ``_bar`` will (nearly) always need classes or functions from ``_foo``,
 it can be useful to add the following to module.py:
 
@@ -1708,7 +1748,7 @@ Sometimes a method called in a test is either not defined in the header or is de
 In many cases this is because there is a SWIG file in the current stack that extends the classes with
 a more pythonic interface.
 In some cases the methods are completely new while in others the C++ methods are overwritten.
-To extend the classes in python see `python-code`_.
+To extend the classes in python see :ref:`python-code`.
 
 .. _gitlock: https://github.com/lsst-dm/gitlock
 .. _inheritance: https://pybind11.readthedocs.io/en/latest/classes.html#inheritance
