@@ -127,7 +127,7 @@ def main(argv):
     with open(os.path.join(test_path, 'test.txt'), 'w') as f:
         tests = [test for test in os.listdir(test_path) if test.startswith("test") and test.endswith(".py")]
         for test in tests:
-            f.write("#"+test+"\n")
+            f.write("#tests/"+test+"\n")
 
     for root, dirs, files in os.walk(header_path):
         relpath = os.path.relpath(root, header_path)
