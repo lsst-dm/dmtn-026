@@ -269,7 +269,8 @@ Once an entire package has been wrapped with pybind11, it is necessary to remove
 
     with open('test.txt', 'r') as f:
         tests = f.readlines()
-    pybind11_ported_tests = [t for t in tests if not t.startswith('#')]
+    # Load the tests that have been wrapped (ignoring the "test/" preceeding the test name)
+    pybind11_ported_tests = [t[6:].strip() for t in tests if not t.startswith('#')]
 
 and remove the kwarg ``pyList=pybind11_ported_tests`` from ``scripts.BasicSConscript.tests``.
 
