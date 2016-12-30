@@ -148,7 +148,8 @@ the following lines must be manually inserted into the ``tests/SConscript`` file
 
     with open('test.txt', 'r') as f:
         tests = f.readlines()
-    pybind11_ported_tests = [t for t in tests if not t.startswith('#')]
+    # Load the tests that have been wrapped (ignoring the "test/" preceeding the test name)
+    pybind11_ported_tests = [t[6:].strip() for t in tests if not t.startswith('#')]
 
 and the line
 
