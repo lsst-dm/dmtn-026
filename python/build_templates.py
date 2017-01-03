@@ -109,10 +109,10 @@ def create_template(template, new_filename, replacements):
 
 def main(argv):
     if len(argv) == 1:
-        pkg_path = argv[0]
+        pkg_path = argv[0].rstrip('/')
         pkg = os.path.basename(pkg_path)
     elif len(argv) == 2:
-        pkg_path = argv[0]
+        pkg_path = argv[0].rstrip('/')
         pkg = argv[1]
     else:
         raise ValueError("Command line expects a path to the package to wrap. For example:\n" +
