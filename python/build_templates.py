@@ -37,7 +37,7 @@ using namespace pybind11::literals;
 $begin_namespace$
 
 PYBIND11_PLUGIN(_$submodule_name$) {
-    py::module mod("_$submodule_name$", "Python wrapper for afw _$submodule_name$ library");
+    py::module mod("_$submodule_name$", "Python wrapper for _$submodule_name$ library");
 
     /* Module level */
 
