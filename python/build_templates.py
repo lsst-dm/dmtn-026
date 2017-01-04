@@ -1,8 +1,8 @@
 from __future__ import absolute_import, division, print_function
 import os
-import sys
 import subprocess
 import errno
+import argparse
 
 script_path = os.path.dirname(os.path.abspath(__file__))
 
@@ -107,17 +107,22 @@ def create_template(template, new_filename, replacements):
         f.write(new_file)
 
 
-def main(argv):
-    if len(argv) == 1:
-        pkg_path = argv[0].rstrip('/')
-        pkg = os.path.basename(pkg_path)
-    elif len(argv) == 2:
-        pkg_path = argv[0].rstrip('/')
-        pkg = argv[1]
-    else:
-        raise ValueError("Command line expects a path to the package to wrap. For example:\n" +
-                         "$ python build_templates.py ~/lsst/code/afw")
-    split_pkg = pkg.split('_')
+def main(pkg_path, pkg_name=None, keep=False):
+    """Run the script
+
+    Parameters
+    ----------
+    pkg_path
+        path to package
+    pkg_name
+        Name of package; if None then use the last component of pkg_path
+    keep
+        Keep SWIG .i interface files. This can be handy for reference,
+        but if you keep them then you must remember to delete them later.
+    """
+    if pkg_name is None:
+        pkg_name = os.path.basename(pkg_path)
+    split_pkg = args.name.split('_')
 
     # Expand the path to a full path
     header_path = get_full_path(os.path.join(pkg_path, 'include', 'lsst', *split_pkg))
@@ -179,7 +184,7 @@ def main(argv):
                     cc_template,
                     os.path.join(new_path, new_filename),
                     {
-                        '$pkg$': pkg,
+                        '$pkg$': pkg_name,
                         '$begin_namespace$': begin_namespace,
                         '$end_namespace$': end_namespace,
                         '$submodule_name$': submodule_name
@@ -187,12 +192,20 @@ def main(argv):
                 )
 
         # Delete SWIG files
-        python_files = os.listdir(new_path)
-        for f in python_files:
-            if f.endswith('.i'):
-                swig_file = os.path.join(new_path, f)
-                print("Removing", swig_file)
-                subprocess.call(['rm', swig_file])
+        if not keep:
+            python_files = os.listdir(new_path)
+            for f in python_files:
+                if f.endswith('.i'):
+                    swig_file = os.path.join(new_path, f)
+                    print("Removing", swig_file)
+                    subprocess.call(['rm', swig_file])
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    parser = argparse.ArgumentParser(description='Prepare a package for pybind11 wrapping.')
+    parser.add_argument("pkg_path", help="Path to package")
+    parser.add_argument("--name", help="Package name", default=None)
+    parser.add_argument("--keep", action="store_true", help="Keep SWIG .i files")
+    args = parser.parse_args()
+
+    args.pkg_path = args.pkg_path.rstrip('/')
+    main(pkg_path = args.pkg_path, pkg_name=args.name, keep=args.keep)
