@@ -122,7 +122,7 @@ def main(pkg_path, pkg_name=None, keep=False):
     """
     if pkg_name is None:
         pkg_name = os.path.basename(pkg_path)
-    split_pkg = args.name.split('_')
+    split_pkg = pkg_name.split('_')
 
     # Expand the path to a full path
     header_path = get_full_path(os.path.join(pkg_path, 'include', 'lsst', *split_pkg))
