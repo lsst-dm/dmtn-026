@@ -4,6 +4,10 @@
 :tocdepth: 1
 .. Please do not modify tocdepth; will be fixed when a new Sphinx theme is shipped.
 
+.. warning::
+
+    This document has been superseded by the pybind11 information in the `LSST DM Developer Guide <https://developer.lsst.io>`_.
+
 .. _scope:
 
 Scope of the document
