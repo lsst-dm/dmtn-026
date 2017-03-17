@@ -56,3 +56,12 @@ docushare_url: ''
 
 # GitHub repo URL
 github_url: 'https://github.com/lsst-dm/dmtn-026'
+
+# This technote is deprecated as of the merging of DM-8467,
+# which implemented pybind11 in place of SWIG on master
+deprecation:
+  date: 2017-03-16
+  message: >-
+    A sentence or two explaining the deprecation.
+  replacements:
+    - {"name": "DM Developer Guide: Python wrappers for C++ with pybind11", "url": "https://developer.lsst.io/coding/python_wrappers_for_cpp_with_pybind11.html"}

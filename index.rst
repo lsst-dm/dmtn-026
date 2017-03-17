@@ -6,7 +6,15 @@
 
 .. warning::
 
-    This document has been superseded by the pybind11 information in the `LSST DM Developer Guide <https://developer.lsst.io>`_.
+    This document was used to assist in porting the stack from SWIG to pybind11.
+    Now that the merge has been completed (`DM-8467 <https://jira.lsstcorp.org/browse/DM-8467>`_),
+    this document exists as a historical record only and should not be used for future development.
+    
+    Date deprecated: 2017-03-16
+    
+    Replacement Links:
+    
+    - `DM Developer Guide: Python wrappers for C++ with pybind11 <https://developer.lsst.io/coding/python_wrappers_for_cpp_with_pybind11.html>`_
 
 .. _scope:
 
